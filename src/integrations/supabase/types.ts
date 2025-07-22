@@ -117,7 +117,7 @@ export type Database = {
         | "team_lead_approved"
         | "ai_analyzed"
         | "completed"
-      user_role: "employee" | "team-lead" | "hr"
+      user_role: "employee" | "team_lead" | "hr"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -253,7 +253,7 @@ export const Constants = {
         "ai_analyzed",
         "completed",
       ],
-      user_role: ["employee", "team-lead", "hr"],
+      user_role: ["employee", "team_lead", "hr"],
     },
   },
 } as const
