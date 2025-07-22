@@ -1,18 +1,38 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Send, Bot, User, CheckCircle, X, ArrowLeft } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Send,
+  Bot,
+  User,
+  CheckCircle,
+  X,
+  ArrowLeft,
+  AlertTriangle,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { AppraisalService } from "@/lib/appraisalService";
+import { openaiClient } from "@/lib/openai";
 
 interface Message {
   id: string;
-  type: 'ai' | 'user';
+  type: "ai" | "user";
   content: string;
   timestamp: Date;
   competency?: string;
@@ -26,18 +46,27 @@ interface CompetencyData {
 }
 
 const competencyQuestions = {
-  technical: "Please describe your key technical achievements, projects you worked on, and any new technologies you learned during this appraisal period. Be as specific as possible!",
-  functional: "Great! Now, let's talk about your **Functional** contributions. How well did you understand the business requirements and user needs for your tasks? Provide examples of how your work impacted the product or user experience.",
-  communication: "Next, let's focus on **Communication**. How effectively did you communicate with your team, stakeholders, or customers? Share examples of how you kept others informed or resolved misunderstandings.",
-  energy_drive: "Lastly, tell me about your **Energy & Drive**. How proactive were you in learning, taking initiative, and contributing to team goals beyond your direct tasks? How do you adapt to feedback?"
+  technical:
+    "Please describe your key technical achievements, projects you worked on, and any new technologies you learned during this appraisal period. Be as specific as possible!",
+  functional:
+    "Great! Now, let's talk about your **Functional** contributions. How well did you understand the business requirements and user needs for your tasks? Provide examples of how your work impacted the product or user experience.",
+  communication:
+    "Next, let's focus on **Communication**. How effectively did you communicate with your team, stakeholders, or customers? Share examples of how you kept others informed or resolved misunderstandings.",
+  energy_drive:
+    "Lastly, tell me about your **Energy & Drive**. How proactive were you in learning, taking initiative, and contributing to team goals beyond your direct tasks? How do you adapt to feedback?",
 };
 
-const competencyOrder = ['technical', 'functional', 'communication', 'energy_drive'] as const;
+const competencyOrder = [
+  "technical",
+  "functional",
+  "communication",
+  "energy_drive",
+] as const;
 const competencyLabels = {
-  technical: 'Technical',
-  functional: 'Functional',
-  communication: 'Communication',
-  energy_drive: 'Energy & Drive'
+  technical: "Technical",
+  functional: "Functional",
+  communication: "Communication",
+  energy_drive: "Energy & Drive",
 };
 
 const ChatAppraisal = () => {
@@ -45,22 +74,28 @@ const ChatAppraisal = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentInput, setCurrentInput] = useState('');
-  const [currentCompetency, setCurrentCompetency] = useState<keyof CompetencyData>('technical');
+  const [currentInput, setCurrentInput] = useState("");
+  const [currentCompetency, setCurrentCompetency] =
+    useState<keyof CompetencyData>("technical");
   const [competencyIndex, setCompetencyIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [responses, setResponses] = useState<CompetencyData>({
-    technical: '',
-    functional: '',
-    communication: '',
-    energy_drive: ''
+    technical: "",
+    functional: "",
+    communication: "",
+    energy_drive: "",
   });
-  const [appraisalId, setAppraisalId] = useState<string>('');
+  const [appraisalId, setAppraisalId] = useState<string>("");
+  const [conversationHistory, setConversationHistory] = useState<
+    Array<{ role: "user" | "assistant"; content: string }>
+  >([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -76,37 +111,30 @@ const ChatAppraisal = () => {
 
     try {
       // Check for existing draft appraisal
-      const { data: existingAppraisal, error: fetchError } = await supabase
-        .from('appraisal_submissions')
-        .select('*')
-        .eq('employee_id', userProfile.id)
-        .eq('status', 'draft')
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('Error fetching existing appraisal:', fetchError);
-      }
+      const existingAppraisal = await AppraisalService.getCurrentAppraisal(
+        userProfile.id
+      );
 
       let appraisal = existingAppraisal;
 
       if (!appraisal) {
         // Create new draft appraisal
         const { data: newAppraisal, error: createError } = await supabase
-          .from('appraisal_submissions')
+          .from("appraisal_submissions")
           .insert({
             employee_id: userProfile.id,
-            status: 'draft',
-            raw_employee_text: {}
+            status: "draft",
+            raw_employee_text: {},
           })
           .select()
           .single();
 
         if (createError) {
-          console.error('Error creating appraisal:', createError);
+          console.error("Error creating appraisal:", createError);
           toast({
             title: "Error",
             description: "Failed to initialize appraisal. Please try again.",
-            variant: "destructive"
+            variant: "destructive",
           });
           return;
         }
@@ -116,10 +144,14 @@ const ChatAppraisal = () => {
       setAppraisalId(appraisal.id);
 
       // Load existing responses if any
-      if (appraisal.raw_employee_text && typeof appraisal.raw_employee_text === 'object') {
-        const existingResponses = appraisal.raw_employee_text as Partial<CompetencyData>;
-        setResponses(prev => ({ ...prev, ...existingResponses }));
-        
+      if (
+        appraisal.raw_employee_text &&
+        typeof appraisal.raw_employee_text === "object"
+      ) {
+        const existingResponses =
+          appraisal.raw_employee_text as Partial<CompetencyData>;
+        setResponses((prev) => ({ ...prev, ...existingResponses }));
+
         // Find where we left off
         let lastCompetencyIndex = 0;
         competencyOrder.forEach((comp, index) => {
@@ -127,7 +159,7 @@ const ChatAppraisal = () => {
             lastCompetencyIndex = index + 1;
           }
         });
-        
+
         if (lastCompetencyIndex >= competencyOrder.length) {
           setIsComplete(true);
           setCompetencyIndex(competencyOrder.length);
@@ -137,117 +169,56 @@ const ChatAppraisal = () => {
         }
       }
 
-      // Initialize welcome message and restore conversation history
+      // Initialize welcome message
       const welcomeMessage: Message = {
-        id: '1',
-        type: 'ai',
+        id: "1",
+        type: "ai",
         content: `Hello ${userProfile.first_name}! Welcome to your self-appraisal. I'll guide you through different areas of your performance. Let's start with your **Technical** contributions.`,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
-      const restoredMessages: Message[] = [welcomeMessage];
+      const firstQuestion: Message = {
+        id: "2",
+        type: "ai",
+        content: competencyQuestions.technical,
+        timestamp: new Date(),
+        competency: "technical",
+      };
 
-      // Restore conversation history based on saved responses
-      if (appraisal.raw_employee_text && typeof appraisal.raw_employee_text === 'object') {
-        const existingResponses = appraisal.raw_employee_text as Partial<CompetencyData>;
-        let messageId = 2;
-        
-        // Add all previous questions and answers
-        competencyOrder.forEach((competency, index) => {
-          // Add the AI question
-          restoredMessages.push({
-            id: messageId.toString(),
-            type: 'ai',
-            content: competencyQuestions[competency],
-            timestamp: new Date(),
-            competency: competency
-          });
-          messageId++;
-
-          // Add user response if it exists
-          if (existingResponses[competency]) {
-            restoredMessages.push({
-              id: messageId.toString(),
-              type: 'user',
-              content: existingResponses[competency],
-              timestamp: new Date(),
-              competency: competency
-            });
-            messageId++;
-          }
-        });
-
-        // Find where we left off
-        let lastCompetencyIndex = 0;
-        competencyOrder.forEach((comp, index) => {
-          if (existingResponses[comp]) {
-            lastCompetencyIndex = index + 1;
-          }
-        });
-        
-        if (lastCompetencyIndex >= competencyOrder.length) {
-          // All competencies complete - add completion message
-          const completionMessage: Message = {
-            id: messageId.toString(),
-            type: 'ai',
-            content: "Excellent! You've completed all competency areas. Please review your responses and click 'Submit Appraisal' when you're ready to finalize your self-appraisal.",
-            timestamp: new Date()
-          };
-          restoredMessages.push(completionMessage);
-          setIsComplete(true);
-          setCompetencyIndex(competencyOrder.length);
-        } else {
-          setCompetencyIndex(lastCompetencyIndex);
-          setCurrentCompetency(competencyOrder[lastCompetencyIndex]);
-        }
-      } else {
-        // Fresh start - add first question
-        const firstQuestion: Message = {
-          id: '2',
-          type: 'ai',
-          content: competencyQuestions.technical,
-          timestamp: new Date(),
-          competency: 'technical'
-        };
-        restoredMessages.push(firstQuestion);
-      }
-
-      setMessages(restoredMessages);
-
+      setMessages([welcomeMessage, firstQuestion]);
     } catch (error) {
-      console.error('Error initializing appraisal:', error);
+      console.error("Error initializing appraisal:", error);
       toast({
         title: "Error",
         description: "Failed to initialize appraisal. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
-  const saveResponse = async (competency: keyof CompetencyData, response: string) => {
+  const saveResponse = async (
+    competency: keyof CompetencyData,
+    response: string
+  ) => {
     if (!appraisalId) return;
 
     const updatedResponses = { ...responses, [competency]: response };
     setResponses(updatedResponses);
 
     try {
-      const { error } = await supabase
-        .from('appraisal_submissions')
-        .update({
-          raw_employee_text: updatedResponses
-        })
-        .eq('id', appraisalId);
-
-      if (error) {
-        console.error('Error saving response:', error);
+      const success = await AppraisalService.saveAppraisalResponse(
+        appraisalId,
+        updatedResponses
+      );
+      if (!success) {
         toast({
           title: "Error",
           description: "Failed to save your response. Please try again.",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (error) {
-      console.error('Error saving response:', error);
+      console.error("Error saving response:", error);
     }
   };
 
@@ -257,45 +228,74 @@ const ChatAppraisal = () => {
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      type: 'user',
+      type: "user",
       content: currentInput,
       timestamp: new Date(),
-      competency: currentCompetency
+      competency: currentCompetency,
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
+
+    // Update conversation history
+    const newHistory = [
+      ...conversationHistory,
+      {
+        role: "assistant" as const,
+        content: competencyQuestions[currentCompetency],
+      },
+      { role: "user" as const, content: currentInput },
+    ];
+    setConversationHistory(newHistory);
 
     // Save the response
     await saveResponse(currentCompetency, currentInput);
 
     // Clear input
-    setCurrentInput('');
+    setCurrentInput("");
 
     // Move to next competency
     const nextIndex = competencyIndex + 1;
-    
+
     if (nextIndex >= competencyOrder.length) {
       // All competencies complete
       const completionMessage: Message = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: "Excellent! You've completed all competency areas. Please review your responses and click 'Submit Appraisal' when you're ready to finalize your self-appraisal.",
-        timestamp: new Date()
+        type: "ai",
+        content:
+          "Excellent! You've completed all competency areas. Please review your responses and click 'Submit Appraisal' when you're ready to finalize your self-appraisal.",
+        timestamp: new Date(),
       };
-      setMessages(prev => [...prev, completionMessage]);
+      setMessages((prev) => [...prev, completionMessage]);
       setIsComplete(true);
     } else {
-      // Ask next question
+      // Generate AI follow-up question
       const nextCompetency = competencyOrder[nextIndex];
-      const nextQuestion: Message = {
+      let nextQuestion = competencyQuestions[nextCompetency];
+
+      // Try to generate a more personalized question using AI
+      try {
+        const aiQuestion = await openaiClient.generateFollowUpQuestion(
+          nextCompetency,
+          currentInput,
+          newHistory
+        );
+        if (aiQuestion) {
+          nextQuestion = aiQuestion;
+        }
+      } catch (error) {
+        console.error("Error generating AI question:", error);
+        // Fall back to default question
+      }
+
+      const nextQuestionMessage: Message = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: competencyQuestions[nextCompetency],
+        type: "ai",
+        content: nextQuestion,
         timestamp: new Date(),
-        competency: nextCompetency
+        competency: nextCompetency,
       };
-      
-      setMessages(prev => [...prev, nextQuestion]);
+
+      setMessages((prev) => [...prev, nextQuestionMessage]);
       setCurrentCompetency(nextCompetency);
       setCompetencyIndex(nextIndex);
     }
@@ -306,37 +306,45 @@ const ChatAppraisal = () => {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('appraisal_submissions')
-        .update({
-          status: 'submitted',
-          submission_date: new Date().toISOString().split('T')[0]
-        })
-        .eq('id', appraisalId);
+      const success = await AppraisalService.submitAppraisal(appraisalId);
 
-      if (error) {
-        console.error('Error submitting appraisal:', error);
+      if (!success) {
         toast({
           title: "Error",
           description: "Failed to submit appraisal. Please try again.",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
+      }
+
+      // Generate AI analysis
+      try {
+        const responsesRecord = Object.fromEntries(
+          Object.entries(responses).map(([key, value]) => [key, value])
+        ) as Record<string, string>;
+        const analysis = await AppraisalService.generateAIAnalysis(
+          responsesRecord
+        );
+        if (analysis) {
+          await AppraisalService.updateAIAnalysis(appraisalId, analysis);
+        }
+      } catch (error) {
+        console.error("Error generating AI analysis:", error);
       }
 
       toast({
         title: "Success",
         description: "Your appraisal has been submitted successfully!",
-        variant: "default"
+        variant: "default",
       });
 
-      navigate('/employee');
+      navigate("/employee");
     } catch (error) {
-      console.error('Error submitting appraisal:', error);
+      console.error("Error submitting appraisal:", error);
       toast({
         title: "Error",
         description: "Failed to submit appraisal. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -344,77 +352,45 @@ const ChatAppraisal = () => {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
   const handleCancelAppraisal = async () => {
-    if (!appraisalId) {
-      // Reset all state to initial values
-      setMessages([]);
-      setCurrentInput('');
-      setCurrentCompetency('technical');
-      setCompetencyIndex(0);
-      setIsComplete(false);
-      setResponses({
-        technical: '',
-        functional: '',
-        communication: '',
-        energy_drive: ''
-      });
-      setAppraisalId('');
-      navigate('/employee');
-      return;
-    }
+    if (!userProfile) return;
 
+    setIsCancelling(true);
     try {
-      // Delete the draft appraisal
-      const { error } = await supabase
-        .from('appraisal_submissions')
-        .delete()
-        .eq('id', appraisalId)
-        .eq('status', 'draft');
+      const success = await AppraisalService.cancelAllAppraisals(
+        userProfile.id
+      );
 
-      if (error) {
-        console.error('Error cancelling appraisal:', error);
+      if (success) {
+        toast({
+          title: "Success",
+          description: "All your appraisal chats have been cancelled.",
+          variant: "default",
+        });
+        navigate("/employee");
+      } else {
         toast({
           title: "Error",
-          description: "Failed to cancel appraisal. Please try again.",
-          variant: "destructive"
+          description: "Failed to cancel appraisals. Please try again.",
+          variant: "destructive",
         });
-        return;
       }
-
-      // Reset all state to initial values
-      setMessages([]);
-      setCurrentInput('');
-      setCurrentCompetency('technical');
-      setCompetencyIndex(0);
-      setIsComplete(false);
-      setResponses({
-        technical: '',
-        functional: '',
-        communication: '',
-        energy_drive: ''
-      });
-      setAppraisalId('');
-
-      toast({
-        title: "Cancelled",
-        description: "Your appraisal has been cancelled successfully.",
-        variant: "default"
-      });
-
-      navigate('/employee');
     } catch (error) {
-      console.error('Error cancelling appraisal:', error);
+      console.error("Error cancelling appraisals:", error);
       toast({
         title: "Error",
-        description: "Failed to cancel appraisal. Please try again.",
-        variant: "destructive"
+        description: "Failed to cancel appraisals. Please try again.",
+        variant: "destructive",
       });
+    } finally {
+      setIsCancelling(false);
+      setShowCancelDialog(false);
     }
   };
 
@@ -427,56 +403,72 @@ const ChatAppraisal = () => {
         <div className="container mx-auto max-w-4xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
-                onClick={() => navigate('/employee')}
+                onClick={() => navigate("/employee")}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Back</span>
               </Button>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold">Self-Appraisal Chat</h1>
-                <p className="text-sm sm:text-base text-muted-foreground">Complete your performance evaluation</p>
+                <h1 className="text-xl sm:text-2xl font-bold">
+                  Self-Appraisal Chat
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground">
+                  Complete your performance evaluation
+                </p>
               </div>
             </div>
             <div className="text-left sm:text-right flex items-center gap-4">
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Competencies Covered: {competencyIndex}/{competencyOrder.length}
+                  Competencies Covered: {competencyIndex}/
+                  {competencyOrder.length}
                 </p>
                 <Progress value={progress} className="w-full sm:w-32 mt-1" />
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-                  >
-                    <X className="w-4 h-4" />
-                    <span className="hidden sm:inline">Cancel</span>
-                  </Button>
-                </AlertDialogTrigger>
+              <AlertDialog
+                open={showCancelDialog}
+                onOpenChange={setShowCancelDialog}
+              >
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel Appraisal?</AlertDialogTitle>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-red-600" />
+                      Cancel Appraisal
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to cancel your appraisal? All your progress will be lost and you'll need to start over.
+                      Are you sure you want to cancel all your appraisal chats?
+                      This action cannot be undone and all your progress will be
+                      lost.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Keep Working</AlertDialogCancel>
-                    <AlertDialogAction 
+                    <AlertDialogAction
                       onClick={handleCancelAppraisal}
-                      className="bg-destructive hover:bg-destructive/90"
+                      className="bg-red-600 hover:bg-red-700"
+                      disabled={isCancelling}
                     >
-                      Yes, Cancel Appraisal
+                      {isCancelling ? "Cancelling..." : "Cancel All"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCancelDialog(true)}
+                className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                disabled={isCancelling}
+              >
+                <X className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                  {isCancelling ? "Cancelling..." : "Cancel"}
+                </span>
+              </Button>
             </div>
           </div>
         </div>
@@ -488,26 +480,57 @@ const ChatAppraisal = () => {
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in px-2 sm:px-0`}
+              className={`flex ${
+                message.type === "user" ? "justify-end" : "justify-start"
+              } animate-fade-in px-2 sm:px-0`}
             >
-              <div className={`flex items-start space-x-2 max-w-[90%] sm:max-w-[80%] ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                <div className={`flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
-                  message.type === 'ai' ? 'bg-primary' : 'bg-blue-600'
-                }`}>
-                  {message.type === 'ai' ? <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-white" /> : <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
+              <div
+                className={`flex items-start space-x-2 max-w-[90%] sm:max-w-[80%] ${
+                  message.type === "user"
+                    ? "flex-row-reverse space-x-reverse"
+                    : ""
+                }`}
+              >
+                <div
+                  className={`flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                    message.type === "ai" ? "bg-primary" : "bg-blue-600"
+                  }`}
+                >
+                  {message.type === "ai" ? (
+                    <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                  ) : (
+                    <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                  )}
                 </div>
-                <Card className={`${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-card'}`}>
+                <Card
+                  className={`${
+                    message.type === "user"
+                      ? "bg-blue-600 text-white"
+                      : "bg-card"
+                  }`}
+                >
                   <CardContent className="p-2 sm:p-3">
-                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                    <p className={`text-xs mt-1 ${message.type === 'user' ? 'text-blue-100' : 'text-muted-foreground'}`}>
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">
+                      {message.content}
+                    </p>
+                    <p
+                      className={`text-xs mt-1 ${
+                        message.type === "user"
+                          ? "text-blue-100"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {message.timestamp.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </p>
                   </CardContent>
                 </Card>
               </div>
             </div>
           ))}
-          
+
           {/* Competency Progress Indicators */}
           {competencyIndex > 0 && (
             <div className="flex flex-wrap justify-center gap-2 py-4 px-2">
@@ -516,19 +539,23 @@ const ChatAppraisal = () => {
                   key={comp}
                   className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1 rounded-full text-xs ${
                     index < competencyIndex
-                      ? 'bg-green-100 text-green-800 border border-green-200'
+                      ? "bg-green-100 text-green-800 border border-green-200"
                       : index === competencyIndex
-                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                      : 'bg-muted text-muted-foreground'
+                      ? "bg-blue-100 text-blue-800 border border-blue-200"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {index < competencyIndex && <CheckCircle className="w-3 h-3" />}
-                  <span className="text-xs sm:text-sm">{competencyLabels[comp]}</span>
+                  {index < competencyIndex && (
+                    <CheckCircle className="w-3 h-3" />
+                  )}
+                  <span className="text-xs sm:text-sm">
+                    {competencyLabels[comp]}
+                  </span>
                 </div>
               ))}
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -539,7 +566,8 @@ const ChatAppraisal = () => {
           {isComplete ? (
             <div className="text-center space-y-4">
               <p className="text-sm sm:text-base text-muted-foreground px-2">
-                Your self-appraisal is complete! Review your responses above and submit when ready.
+                Your self-appraisal is complete! Review your responses above and
+                submit when ready.
               </p>
               <Button
                 onClick={handleSubmitAppraisal}
@@ -547,7 +575,7 @@ const ChatAppraisal = () => {
                 size="lg"
                 className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Appraisal'}
+                {isSubmitting ? "Submitting..." : "Submit Appraisal"}
               </Button>
             </div>
           ) : (
