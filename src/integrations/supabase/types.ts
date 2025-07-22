@@ -14,7 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appraisal_submissions: {
+        Row: {
+          ai_analysis: Json | null
+          created_at: string
+          employee_id: string
+          id: string
+          raw_employee_text: Json | null
+          raw_team_lead_text: string | null
+          status: Database["public"]["Enums"]["appraisal_status"]
+          submission_date: string
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          raw_employee_text?: Json | null
+          raw_team_lead_text?: string | null
+          status?: Database["public"]["Enums"]["appraisal_status"]
+          submission_date?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          raw_employee_text?: Json | null
+          raw_team_lead_text?: string | null
+          status?: Database["public"]["Enums"]["appraisal_status"]
+          submission_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appraisal_submissions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          created_at: string
+          department: string | null
+          first_name: string
+          id: string
+          last_name: string
+          role: Database["public"]["Enums"]["user_role"]
+          team_lead_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          role?: Database["public"]["Enums"]["user_role"]
+          team_lead_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          team_lead_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_team_lead_id_fkey"
+            columns: ["team_lead_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +110,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      appraisal_status:
+        | "draft"
+        | "submitted"
+        | "team_lead_review"
+        | "team_lead_approved"
+        | "ai_analyzed"
+        | "completed"
+      user_role: "employee" | "team-lead" | "hr"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +244,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      appraisal_status: [
+        "draft",
+        "submitted",
+        "team_lead_review",
+        "team_lead_approved",
+        "ai_analyzed",
+        "completed",
+      ],
+      user_role: ["employee", "team-lead", "hr"],
+    },
   },
 } as const
