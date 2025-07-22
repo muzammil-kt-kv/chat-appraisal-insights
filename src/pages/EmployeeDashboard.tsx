@@ -3,11 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { User, MessageSquare, Clock, CheckCircle } from 'lucide-react';
 
 const EmployeeDashboard = () => {
-  console.log('EmployeeDashboard: Component mounted and rendering');
-  
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ minHeight: '100vh' }}>
-      <div className="container mx-auto px-4 py-8" style={{ backgroundColor: 'red', minHeight: '500px' }}>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="hover:shadow-medium transition-shadow">
             <CardHeader>
