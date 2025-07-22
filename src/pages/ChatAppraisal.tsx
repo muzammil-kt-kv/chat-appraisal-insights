@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Send, Bot, User, CheckCircle } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Send, Bot, User, CheckCircle, X, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -290,6 +291,47 @@ const ChatAppraisal = () => {
     }
   };
 
+  const handleCancelAppraisal = async () => {
+    if (!appraisalId) {
+      navigate('/employee');
+      return;
+    }
+
+    try {
+      // Delete the draft appraisal
+      const { error } = await supabase
+        .from('appraisal_submissions')
+        .delete()
+        .eq('id', appraisalId)
+        .eq('status', 'draft');
+
+      if (error) {
+        console.error('Error cancelling appraisal:', error);
+        toast({
+          title: "Error",
+          description: "Failed to cancel appraisal. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Cancelled",
+        description: "Your appraisal has been cancelled successfully.",
+        variant: "default"
+      });
+
+      navigate('/employee');
+    } catch (error) {
+      console.error('Error cancelling appraisal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel appraisal. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const progress = (competencyIndex / competencyOrder.length) * 100;
 
   return (
@@ -298,15 +340,57 @@ const ChatAppraisal = () => {
       <div className="border-b bg-card p-2 sm:p-4">
         <div className="container mx-auto max-w-4xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Self-Appraisal Chat</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Complete your performance evaluation</p>
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/employee')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Back</span>
+              </Button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold">Self-Appraisal Chat</h1>
+                <p className="text-sm sm:text-base text-muted-foreground">Complete your performance evaluation</p>
+              </div>
             </div>
-            <div className="text-left sm:text-right">
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Competencies Covered: {competencyIndex}/{competencyOrder.length}
-              </p>
-              <Progress value={progress} className="w-full sm:w-32 mt-1" />
+            <div className="text-left sm:text-right flex items-center gap-4">
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Competencies Covered: {competencyIndex}/{competencyOrder.length}
+                </p>
+                <Progress value={progress} className="w-full sm:w-32 mt-1" />
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    <X className="w-4 h-4" />
+                    <span className="hidden sm:inline">Cancel</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel Appraisal?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to cancel your appraisal? All your progress will be lost and you'll need to start over.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Working</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleCancelAppraisal}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      Yes, Cancel Appraisal
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </div>
