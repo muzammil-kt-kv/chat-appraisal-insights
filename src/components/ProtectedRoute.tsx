@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
@@ -14,6 +15,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   redirectTo = '/login'
 }) => {
   const { user, userProfile, isLoading } = useAuth();
+  const location = useLocation();
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -29,15 +31,21 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={redirectTo} replace />;
   }
 
-  // Check if user role is allowed
+  // Check if user role is allowed for this route
   if (allowedRoles.length > 0 && !allowedRoles.includes(userProfile.role)) {
-    // Redirect to appropriate dashboard based on role
+    // Only redirect if we're not already on the correct route for this role
     const roleRedirect = {
       employee: '/employee',
       team_lead: '/team-lead',
       hr: '/hr'
     };
-    return <Navigate to={roleRedirect[userProfile.role]} replace />;
+    
+    const targetRoute = roleRedirect[userProfile.role];
+    
+    // Prevent infinite redirect loop by checking current location
+    if (location.pathname !== targetRoute) {
+      return <Navigate to={targetRoute} replace />;
+    }
   }
 
   return <>{children}</>;

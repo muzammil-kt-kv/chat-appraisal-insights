@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +17,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const { user, isLoading } = useAuth();
+  const { user, userProfile, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -26,6 +27,22 @@ const AppContent = () => {
     );
   }
 
+  // Helper function to get default route based on user role
+  const getDefaultRoute = () => {
+    if (!userProfile) return '/login';
+    
+    switch (userProfile.role) {
+      case 'employee':
+        return '/employee';
+      case 'team_lead':
+        return '/team-lead';
+      case 'hr':
+        return '/hr';
+      default:
+        return '/employee';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {user && <AppHeader />}
@@ -33,21 +50,13 @@ const AppContent = () => {
         <Route 
           path="/login" 
           element={
-            user ? <Navigate to="/dashboard" replace /> : <Login />
+            user ? <Navigate to={getDefaultRoute()} replace /> : <Login />
           } 
         />
         <Route 
           path="/" 
           element={
-            user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
-          } 
-        />
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Navigate to="/employee" replace />
-            </ProtectedRoute>
+            user ? <Navigate to={getDefaultRoute()} replace /> : <Navigate to="/login" replace />
           } 
         />
         <Route 
