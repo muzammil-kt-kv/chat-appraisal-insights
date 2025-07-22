@@ -24,6 +24,21 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+				employee: {
+					DEFAULT: 'hsl(var(--employee))',
+					foreground: 'hsl(var(--employee-foreground))',
+					muted: 'hsl(var(--employee-muted))'
+				},
+				'team-lead': {
+					DEFAULT: 'hsl(var(--team-lead))',
+					foreground: 'hsl(var(--team-lead-foreground))',
+					muted: 'hsl(var(--team-lead-muted))'
+				},
+				hr: {
+					DEFAULT: 'hsl(var(--hr))',
+					foreground: 'hsl(var(--hr-foreground))',
+					muted: 'hsl(var(--hr-muted))'
+				},
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
@@ -62,6 +77,17 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			backgroundImage: {
+				'gradient-corporate': 'var(--gradient-corporate)',
+				'gradient-employee': 'var(--gradient-employee)',
+				'gradient-team-lead': 'var(--gradient-team-lead)',
+				'gradient-hr': 'var(--gradient-hr)'
+			},
+			boxShadow: {
+				'soft': 'var(--shadow-soft)',
+				'medium': 'var(--shadow-medium)',
+				'role': 'var(--shadow-role)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

@@ -18,6 +18,9 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        employee: "bg-employee text-employee-foreground hover:bg-employee/90 shadow-soft",
+        "team-lead": "bg-team-lead text-team-lead-foreground hover:bg-team-lead/90 shadow-soft",
+        hr: "bg-hr text-hr-foreground hover:bg-hr/90 shadow-soft",
       },
       size: {
         default: "h-10 px-4 py-2",
