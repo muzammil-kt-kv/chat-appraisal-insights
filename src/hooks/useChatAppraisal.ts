@@ -245,10 +245,21 @@ export const useChatAppraisal = () => {
       removeTypingIndicator();
 
       if (aiResponse) {
+        // Parse JSON question format if present
+        let displayContent = aiResponse;
+        try {
+          const parsed = JSON.parse(aiResponse);
+          if (parsed.question) {
+            displayContent = parsed.question;
+          }
+        } catch {
+          // Not JSON, use as is
+        }
+
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: "ai",
-          content: aiResponse,
+          content: displayContent,
           timestamp: new Date(),
         };
 
