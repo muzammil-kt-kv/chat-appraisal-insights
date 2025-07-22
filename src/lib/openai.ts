@@ -487,19 +487,49 @@ Keep the analysis professional and constructive.`;
   }
 }
 
-// Create a singleton instance with API key validation
-const getOpenAIApiKey = (): string => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  
-  if (!apiKey || apiKey === "sk-test") {
-    console.warn("⚠️ OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.");
-    return "sk-test"; // Fallback for development
+// Create a singleton instance that uses Supabase Edge Function
+class SupabaseOpenAIClient extends OpenAIClient {
+  constructor() {
+    super(""); // Empty key since we're using edge function
   }
-  
-  return apiKey;
-};
 
-const openaiClient = new OpenAIClient(getOpenAIApiKey());
+  async chatCompletion(
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+    model: string = "gpt-4o-mini"
+  ): Promise<string | null> {
+    try {
+      const response = await fetch(
+        'https://afotusbousojuugwfkib.supabase.co/functions/v1/openai-chat',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmb3R1c2JvdXNvanV1Z3dma2liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NTcwNzYsImV4cCI6MjA2ODIzMzA3Nn0.U3Q7Qjxcf9guOhw9uBZIWSQVCxgQO7NDIhKNDveLRik`,
+          },
+          body: JSON.stringify({
+            messages,
+            model,
+            max_tokens: 1000
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Edge function error:', errorText);
+        return null;
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content || null;
+    } catch (error) {
+      console.error('Error calling OpenAI edge function:', error);
+      return null;
+    }
+  }
+}
+
+const openaiClient = new SupabaseOpenAIClient();
 
 export { openaiClient, OpenAIClient, COMPETENCY_MATRIX };
 export type { OpenAI };
