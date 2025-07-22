@@ -106,6 +106,8 @@ const TeamLeadDashboard = () => {
     
     const appraisal = Array.isArray(member.appraisal_submissions) ? member.appraisal_submissions[0] : member.appraisal_submissions;
     
+    if (!appraisal) return 'not-started';
+    
     switch (appraisal.status) {
       case 'draft':
         return 'in-progress';
@@ -126,6 +128,8 @@ const TeamLeadDashboard = () => {
     if (!member.appraisal_submissions) return null;
     
     const appraisal = Array.isArray(member.appraisal_submissions) ? member.appraisal_submissions[0] : member.appraisal_submissions;
+    
+    if (!appraisal) return null;
     
     return appraisal.team_lead_reviewed_at || appraisal.submission_date;
   };
