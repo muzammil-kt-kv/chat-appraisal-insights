@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
+import ChatAppraisal from "./pages/ChatAppraisal";
 import TeamLeadDashboard from "./pages/TeamLeadDashboard";
 import HRDashboard from "./pages/HRDashboard";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,14 @@ const AppContent = () => {
           element={
             <ProtectedRoute allowedRoles={['employee']}>
               <EmployeeDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/employee/chat-appraisal" 
+          element={
+            <ProtectedRoute allowedRoles={['employee']}>
+              <ChatAppraisal />
             </ProtectedRoute>
           } 
         />
