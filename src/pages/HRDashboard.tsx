@@ -6,20 +6,6 @@ import { Crown, Users, TrendingUp, BarChart3, FileText, Settings } from 'lucide-
 const HRDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-gradient-hr text-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <Crown className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">HR Analytics Dashboard</h1>
-              <p className="text-purple-100">Comprehensive performance insights and analytics</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>

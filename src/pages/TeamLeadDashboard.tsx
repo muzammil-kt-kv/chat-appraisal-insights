@@ -32,20 +32,6 @@ const TeamLeadDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-gradient-team-lead text-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">Team Lead Dashboard</h1>
-              <p className="text-green-100">Review and approve team appraisals</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <Card>

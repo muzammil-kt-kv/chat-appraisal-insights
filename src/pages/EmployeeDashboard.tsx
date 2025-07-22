@@ -5,20 +5,6 @@ import { User, MessageSquare, Clock, CheckCircle } from 'lucide-react';
 const EmployeeDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-gradient-employee text-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">Employee Dashboard</h1>
-              <p className="text-blue-100">Welcome to your self-appraisal portal</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="hover:shadow-medium transition-shadow">
