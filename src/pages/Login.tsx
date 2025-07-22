@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ interface LoginFormData {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'employee' | 'team-lead' | 'hr';
+  role: 'employee' | 'team_lead' | 'hr';
   department: string;
 }
 
@@ -66,7 +67,7 @@ const Login = () => {
       case 'employee':
         navigate('/employee');
         break;
-      case 'team-lead':
+      case 'team_lead':
         navigate('/team-lead');
         break;
       case 'hr':
@@ -219,7 +220,7 @@ const Login = () => {
                         required
                       >
                         <option value="employee">Employee</option>
-                        <option value="team-lead">Team Lead</option>
+                        <option value="team_lead">Team Lead</option>
                         <option value="hr">HR</option>
                       </select>
                     </div>

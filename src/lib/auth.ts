@@ -1,9 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UserProfile {
   id: string;
   user_id: string;
-  role: 'employee' | 'team-lead' | 'hr';
+  role: 'employee' | 'team_lead' | 'hr';
   first_name: string;
   last_name: string;
   department: string | null;
@@ -13,7 +14,7 @@ export interface UserProfile {
 export const signUp = async (email: string, password: string, userData: {
   first_name: string;
   last_name: string;
-  role: 'employee' | 'team-lead' | 'hr';
+  role: 'employee' | 'team_lead' | 'hr';
   department?: string;
 }) => {
   const { data, error } = await supabase.auth.signUp({
