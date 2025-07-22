@@ -24,6 +24,10 @@ export type Database = {
           raw_team_lead_text: string | null
           status: Database["public"]["Enums"]["appraisal_status"]
           submission_date: string
+          team_lead_comments: string | null
+          team_lead_review: Json | null
+          team_lead_reviewed_at: string | null
+          team_lead_reviewed_by: string | null
           updated_at: string
         }
         Insert: {
@@ -35,6 +39,10 @@ export type Database = {
           raw_team_lead_text?: string | null
           status?: Database["public"]["Enums"]["appraisal_status"]
           submission_date?: string
+          team_lead_comments?: string | null
+          team_lead_review?: Json | null
+          team_lead_reviewed_at?: string | null
+          team_lead_reviewed_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -46,12 +54,23 @@ export type Database = {
           raw_team_lead_text?: string | null
           status?: Database["public"]["Enums"]["appraisal_status"]
           submission_date?: string
+          team_lead_comments?: string | null
+          team_lead_review?: Json | null
+          team_lead_reviewed_at?: string | null
+          team_lead_reviewed_by?: string | null
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "appraisal_submissions_employee_id_fkey"
             columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_team_lead_reviewed_by"
+            columns: ["team_lead_reviewed_by"]
             isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]

@@ -1,9 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Users, Clock, CheckCircle, AlertCircle, User } from 'lucide-react';
+import { Shield, Users, Clock, CheckCircle, AlertCircle, User, MessageSquare, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const TeamLeadDashboard = () => {
+  const navigate = useNavigate();
+  
   // Mock data - replace with actual data from Supabase
   const teamMembers = [
     { id: 1, name: 'John Smith', status: 'pending-review', completedAt: '2024-01-15' },
@@ -28,6 +31,14 @@ const TeamLeadDashboard = () => {
         {label}
       </Badge>
     );
+  };
+
+  const handleStartAppraisal = () => {
+    navigate('/team-lead/chat-appraisal');
+  };
+
+  const handleReviewEmployee = (employeeId: number) => {
+    navigate(`/team-lead/review/${employeeId}`);
   };
 
   return (
@@ -78,6 +89,51 @@ const TeamLeadDashboard = () => {
           </Card>
         </div>
 
+        {/* Team Lead's Own Appraisal Section */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <Card className="border-team-lead/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-team-lead" />
+                My Self-Appraisal
+              </CardTitle>
+              <CardDescription>
+                Complete your own performance evaluation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={handleStartAppraisal}
+                className="w-full bg-team-lead hover:bg-team-lead/90"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Start Chat Appraisal
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-team-lead/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-team-lead" />
+                My Appraisal Status
+              </CardTitle>
+              <CardDescription>
+                Track your appraisal progress
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  Not Started
+                </Badge>
+                <span className="text-sm text-muted-foreground">Ready to begin</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Team Appraisal Status</CardTitle>
@@ -107,13 +163,21 @@ const TeamLeadDashboard = () => {
                     {getStatusBadge(member.status)}
                     
                     {member.status === 'pending-review' && (
-                      <Button variant="team-lead" size="sm">
+                      <Button 
+                        variant="team-lead" 
+                        size="sm"
+                        onClick={() => handleReviewEmployee(member.id)}
+                      >
                         Review
                       </Button>
                     )}
                     
                     {member.status === 'completed' && (
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleReviewEmployee(member.id)}
+                      >
                         View Details
                       </Button>
                     )}

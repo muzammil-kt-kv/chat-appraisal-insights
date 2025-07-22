@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import ChatAppraisal from "./pages/ChatAppraisal";
 import TeamLeadDashboard from "./pages/TeamLeadDashboard";
+import TeamLeadReview from "./pages/TeamLeadReview";
 import HRDashboard from "./pages/HRDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -80,6 +81,22 @@ const AppContent = () => {
           element={
             <ProtectedRoute allowedRoles={['team_lead']}>
               <TeamLeadDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/team-lead/chat-appraisal" 
+          element={
+            <ProtectedRoute allowedRoles={['team_lead']}>
+              <ChatAppraisal />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/team-lead/review/:employeeId" 
+          element={
+            <ProtectedRoute allowedRoles={['team_lead']}>
+              <TeamLeadReview />
             </ProtectedRoute>
           } 
         />
