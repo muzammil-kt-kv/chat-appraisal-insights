@@ -13,11 +13,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { X, ArrowLeft, AlertTriangle } from "lucide-react";
+import { X, ArrowLeft, AlertTriangle, BarChart3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { AppraisalService } from "@/lib/appraisalService";
 import ChatInterface from "@/components/ChatInterface";
+import CompetencyInsights from "@/components/CompetencyInsights";
 import { useChatAppraisal } from "@/hooks/useChatAppraisal";
 
 const ChatAppraisal = () => {
@@ -26,6 +27,7 @@ const ChatAppraisal = () => {
   const navigate = useNavigate();
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
 
   const {
     messages,
@@ -35,6 +37,7 @@ const ChatAppraisal = () => {
     isSubmitting,
     isLoading,
     progress,
+    coverageAnalysis,
     initializeAppraisal,
     handleSendMessage,
     handleSubmitAppraisal,
@@ -119,6 +122,22 @@ const ChatAppraisal = () => {
                 </p>
                 <Progress value={progress} className="w-full sm:w-32 mt-1" />
               </div>
+
+              {/* Insights Toggle Button */}
+              {coverageAnalysis && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowInsights(!showInsights)}
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span className="hidden sm:inline">
+                    {showInsights ? "Hide" : "Show"} Insights
+                  </span>
+                </Button>
+              )}
+
               <AlertDialog
                 open={showCancelDialog}
                 onOpenChange={setShowCancelDialog}
@@ -164,20 +183,37 @@ const ChatAppraisal = () => {
         </div>
       </div>
 
-      {/* Chat Interface */}
+      {/* Main Content */}
       <div className="flex-1 container mx-auto max-w-4xl p-2 sm:p-4">
-        <ChatInterface
-          messages={messages}
-          currentInput={currentInput}
-          onInputChange={setCurrentInput}
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-          isComplete={isComplete}
-          onSubmit={handleSubmitAndNavigate}
-          submitText={isSubmitting ? "Submitting..." : "Submit Appraisal"}
-          placeholder="Type your response..."
-          disabled={isSubmitting}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+          {/* Chat Interface */}
+          <div
+            className={`${showInsights ? "lg:col-span-2" : "lg:col-span-3"}`}
+          >
+            <ChatInterface
+              messages={messages}
+              currentInput={currentInput}
+              onInputChange={setCurrentInput}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+              isComplete={isComplete}
+              onSubmit={handleSubmitAndNavigate}
+              submitText={isSubmitting ? "Submitting..." : "Submit Appraisal"}
+              placeholder="Type your response..."
+              disabled={isSubmitting}
+            />
+          </div>
+
+          {/* Competency Insights Sidebar */}
+          {showInsights && (
+            <div className="lg:col-span-1">
+              <CompetencyInsights
+                coverageAnalysis={coverageAnalysis}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

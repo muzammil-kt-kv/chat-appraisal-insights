@@ -10,19 +10,15 @@ interface Message {
   type: "ai" | "user";
   content: string;
   timestamp: Date;
-  competency?: string;
   isTyping?: boolean;
 }
 
-interface CompetencyData {
-  technical: string;
-  functional: string;
-  ai_adoption: string;
-  communication: string;
-  energy_drive: string;
-  responsibilities_trust: string;
-  teamwork: string;
-  managing_processes_work: string;
+interface Question {
+  question: string;
+}
+
+interface QuestionsResponse {
+  questions: Question[];
 }
 
 interface CoverageAnalysis {
@@ -34,31 +30,23 @@ interface CoverageAnalysis {
   summary: string;
 }
 
-export const useChatAppraisal = () => {
+export const useQuestionBasedChat = () => {
   const { userProfile } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState("");
   const [isComplete, setIsComplete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [responses, setResponses] = useState<CompetencyData>({
-    technical: "",
-    functional: "",
-    ai_adoption: "",
-    communication: "",
-    energy_drive: "",
-    responsibilities_trust: "",
-    teamwork: "",
-    managing_processes_work: "",
-  });
   const [appraisalId, setAppraisalId] = useState<string>("");
   const [conversationHistory, setConversationHistory] = useState<
     Array<{ role: "user" | "assistant"; content: string }>
   >([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedQuestions, setGeneratedQuestions] = useState<string>("");
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [coverageAnalysis, setCoverageAnalysis] =
     useState<CoverageAnalysis | null>(null);
+  const [questionPrompt, setQuestionPrompt] = useState<string>("");
 
   const addTypingIndicator = () => {
     const typingMessage: Message = {
@@ -73,6 +61,35 @@ export const useChatAppraisal = () => {
 
   const removeTypingIndicator = () => {
     setMessages((prev) => prev.filter((msg) => !msg.isTyping));
+  };
+
+  const generateQuestions = async (): Promise<Question[]> => {
+    try {
+      const response = await openaiClient.questionGenPrompt();
+      if (response) {
+        const questionsData: QuestionsResponse = JSON.parse(response);
+        return questionsData.questions || [];
+      }
+    } catch (error) {
+      console.error("Error generating questions:", error);
+    }
+    return [];
+  };
+
+  const analyzeCoverage = async (
+    userResponse: string
+  ): Promise<CoverageAnalysis | null> => {
+    try {
+      const coverageResponse = await openaiClient.chatCoverage(userResponse);
+      if (coverageResponse) {
+        const analysis = JSON.parse(coverageResponse) as CoverageAnalysis;
+        setCoverageAnalysis(analysis);
+        return analysis;
+      }
+    } catch (error) {
+      console.error("Error analyzing coverage:", error);
+    }
+    return null;
   };
 
   const initializeAppraisal = async () => {
@@ -112,69 +129,69 @@ export const useChatAppraisal = () => {
 
       setAppraisalId(appraisal.id);
 
-      // Load existing responses if any
-      if (
-        appraisal.raw_employee_text &&
-        typeof appraisal.raw_employee_text === "object"
-      ) {
-        const existingResponses =
-          appraisal.raw_employee_text as Partial<CompetencyData>;
-        setResponses((prev) => ({ ...prev, ...existingResponses }));
-
-        // Reconstruct conversation history from existing responses
-        const history: Array<{ role: "user" | "assistant"; content: string }> =
-          [];
-        Object.entries(existingResponses).forEach(([competency, response]) => {
-          if (response) {
-            history.push({
-              role: "assistant",
-              content: `Tell me about your ${competency}.`,
-            });
-            history.push({ role: "user", content: response });
-          }
-        });
+      // Load existing conversation history if any
+      if (appraisal.conversation_history) {
+        const history = appraisal.conversation_history as Array<{
+          role: "user" | "assistant";
+          content: string;
+        }>;
         setConversationHistory(history);
-      }
 
-      // Generate questions using the new functionality
-      try {
-        const questionsResponse = await openaiClient.questionGenPrompt();
-        if (questionsResponse) {
-          setGeneratedQuestions(questionsResponse);
+        // Reconstruct messages from history
+        const reconstructedMessages: Message[] = [];
+        history.forEach((entry, index) => {
+          const message: Message = {
+            id: index.toString(),
+            type: entry.role === "user" ? "user" : "ai",
+            content: entry.content,
+            timestamp: new Date(),
+          };
+          reconstructedMessages.push(message);
+        });
+        setMessages(reconstructedMessages);
 
-          // Parse questions and start with the first one
-          try {
-            const questionsData = JSON.parse(questionsResponse);
-            if (questionsData.questions && questionsData.questions.length > 0) {
-              const firstQuestion = questionsData.questions[0].question;
-
-              const welcomeMessage: Message = {
-                id: "1",
-                type: "ai",
-                content: `Hello ${userProfile.first_name}! Welcome to your self-appraisal. I'm here to help you reflect on your performance across different areas. Let's start with our first question:\n\n${firstQuestion}`,
-                timestamp: new Date(),
-              };
-
-              setMessages([welcomeMessage]);
-              return;
-            }
-          } catch (parseError) {
-            console.error("Error parsing questions:", parseError);
-          }
+        // Check if conversation is complete
+        if (
+          history.length > 0 &&
+          history[history.length - 1].content
+            .toLowerCase()
+            .includes("thank you")
+        ) {
+          setIsComplete(true);
         }
-      } catch (error) {
-        console.error("Error generating questions:", error);
+      } else {
+        // Generate new questions
+        const generatedQuestions = await generateQuestions();
+        setQuestions(generatedQuestions);
+
+        if (generatedQuestions.length > 0) {
+          const firstQuestion = generatedQuestions[0].question;
+          setQuestionPrompt(
+            openaiClient.questionChatPrompt(
+              JSON.stringify({ questions: generatedQuestions })
+            )
+          );
+
+          const welcomeMessage: Message = {
+            id: "1",
+            type: "ai",
+            content: `Hello ${userProfile.first_name}! Welcome to your self-appraisal. I'm here to help you reflect on your performance across different areas. Let's start with our first question:\n\n${firstQuestion}`,
+            timestamp: new Date(),
+          };
+
+          setMessages([welcomeMessage]);
+        } else {
+          // Fallback welcome message
+          const welcomeMessage: Message = {
+            id: "1",
+            type: "ai",
+            content: `Hello ${userProfile.first_name}! Welcome to your self-appraisal. I'm here to help you reflect on your performance across different areas. Let's start with a conversation about your work experience. What would you like to tell me about your recent contributions and achievements?`,
+            timestamp: new Date(),
+          };
+
+          setMessages([welcomeMessage]);
+        }
       }
-
-      // Fallback welcome message
-      const welcomeMessage: Message = {
-        id: "1",
-        type: "ai",
-        content: `Hello ${userProfile.first_name}! Welcome to your self-appraisal. I'm here to help you reflect on your performance across different areas. Let's start with a conversation about your work experience. What would you like to tell me about your recent contributions and achievements?`,
-        timestamp: new Date(),
-      };
-
-      setMessages([welcomeMessage]);
     } catch (error) {
       console.error("Error initializing appraisal:", error);
       toast({
@@ -183,26 +200,6 @@ export const useChatAppraisal = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const analyzeCoverage = async (
-    userResponse: string
-  ): Promise<CoverageAnalysis | null> => {
-    try {
-      const coverageResponse = await openaiClient.chatCoverage(userResponse);
-      if (coverageResponse) {
-        try {
-          const analysis = JSON.parse(coverageResponse) as CoverageAnalysis;
-          setCoverageAnalysis(analysis);
-          return analysis;
-        } catch (parseError) {
-          console.error("Error parsing coverage analysis:", parseError);
-        }
-      }
-    } catch (error) {
-      console.error("Error analyzing coverage:", error);
-    }
-    return null;
   };
 
   const handleSendMessage = async () => {
@@ -231,11 +228,9 @@ export const useChatAppraisal = () => {
 
     try {
       // Analyze coverage of the user's response
-      const coverage = await analyzeCoverage(currentInput);
+      await analyzeCoverage(currentInput);
 
-      // Use the new conversation chat with question prompt
-      const questionPrompt =
-        openaiClient.questionChatPrompt(generatedQuestions);
+      // Use the question-based conversation chat
       const aiResponse = await openaiClient.conversationChat(
         questionPrompt,
         newHistory,
@@ -284,6 +279,8 @@ export const useChatAppraisal = () => {
           setMessages((prev) => [...prev, completionMessage]);
           setIsComplete(true);
         } else {
+          // Move to next question
+          setCurrentQuestionIndex((prev) => prev + 1);
         }
       } else {
         removeTypingIndicator();
@@ -356,7 +353,7 @@ export const useChatAppraisal = () => {
   };
 
   const progress = Math.min(
-    (Object.values(responses).filter((r) => r.trim() !== "").length / 8) * 100,
+    (currentQuestionIndex / Math.max(questions.length, 8)) * 100,
     100
   );
 
@@ -370,6 +367,8 @@ export const useChatAppraisal = () => {
     progress,
     appraisalId,
     coverageAnalysis,
+    currentQuestionIndex,
+    totalQuestions: questions.length,
     initializeAppraisal,
     handleSendMessage,
     handleSubmitAppraisal,
