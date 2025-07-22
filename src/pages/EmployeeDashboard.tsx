@@ -10,7 +10,7 @@ const EmployeeDashboard = () => {
           <Card className="hover:shadow-medium transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-employee" />
+                <MessageSquare className="w-5 h-5 text-blue-600" />
                 Start Appraisal
               </CardTitle>
               <CardDescription>
@@ -18,7 +18,7 @@ const EmployeeDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="employee" className="w-full">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                 Start Chat Appraisal
               </Button>
             </CardContent>
@@ -41,7 +41,7 @@ const EmployeeDashboard = () => {
                   <span className="text-sm text-muted-foreground">0/5 competencies</span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">
-                  <div className="bg-employee h-2 rounded-full w-0"></div>
+                  <div className="bg-blue-600 h-2 rounded-full w-0"></div>
                 </div>
               </div>
             </CardContent>
@@ -79,7 +79,7 @@ const EmployeeDashboard = () => {
                   'Communication',
                   'Energy & Drive'
                 ].map((competency) => (
-                  <div key={competency} className="p-3 bg-employee-muted rounded-lg">
+                  <div key={competency} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <h4 className="font-medium">{competency}</h4>
                     <p className="text-sm text-muted-foreground mt-1">Not started</p>
                   </div>
