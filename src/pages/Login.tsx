@@ -1,46 +1,105 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { User, Shield, Crown } from 'lucide-react';
+import { signIn, signUp, getCurrentUserProfile } from '@/lib/auth';
+import { supabase } from '@/integrations/supabase/client';
+import { LogIn, UserPlus } from 'lucide-react';
 import corporateHeader from '@/assets/corporate-header.jpg';
 
 interface LoginFormData {
   email: string;
   password: string;
-  role: 'employee' | 'team-lead' | 'hr' | null;
+  firstName: string;
+  lastName: string;
+  role: 'employee' | 'team-lead' | 'hr';
+  department: string;
 }
 
 const Login = () => {
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
-    role: null
+    firstName: '',
+    lastName: '',
+    role: 'employee',
+    department: ''
   });
+  const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Check if user is already authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const profile = await getCurrentUserProfile();
+        if (profile) {
+          redirectBasedOnRole(profile.role);
+        }
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const profile = await getCurrentUserProfile();
+        if (profile) {
+          redirectBasedOnRole(profile.role);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const redirectBasedOnRole = (role: string) => {
+    switch (role) {
+      case 'employee':
+        navigate('/employee');
+        break;
+      case 'team-lead':
+        navigate('/team-lead');
+        break;
+      case 'hr':
+        navigate('/hr');
+        break;
+      default:
+        navigate('/employee');
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
   };
 
-  const handleRoleSelect = (role: 'employee' | 'team-lead' | 'hr') => {
-    setFormData(prev => ({ ...prev, role }));
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password || !formData.role) {
+    if (!formData.email || !formData.password) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all fields and select a role.",
+        description: "Please fill in email and password.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!isLogin && (!formData.firstName || !formData.lastName)) {
+      toast({
+        title: "Missing Information", 
+        description: "Please fill in all required fields.",
         variant: "destructive"
       });
       return;
@@ -49,50 +108,38 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // TODO: Replace with actual Supabase authentication
-      // Simulate login process
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (isLogin) {
+        const { error } = await signIn(formData.email, formData.password);
+        if (error) throw error;
+        
+        toast({
+          title: "Login Successful",
+          description: "Welcome back! Redirecting to your dashboard..."
+        });
+      } else {
+        const { error } = await signUp(formData.email, formData.password, {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          role: formData.role,
+          department: formData.department
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Account Created",
+          description: "Please check your email to verify your account."
+        });
+      }
       
+    } catch (error: any) {
       toast({
-        title: "Login Successful",
-        description: `Welcome back! Redirecting to ${formData.role} dashboard...`
-      });
-      
-      // TODO: Redirect to appropriate dashboard based on role
-      console.log('Redirecting to:', formData.role, 'dashboard');
-      
-    } catch (error) {
-      toast({
-        title: "Login Failed",
-        description: "Invalid credentials. Please try again.",
+        title: isLogin ? "Login Failed" : "Signup Failed",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const roleConfig = {
-    employee: {
-      title: 'Employee Login',
-      description: 'Access your self-appraisal portal',
-      icon: User,
-      variant: 'employee' as const,
-      bgClass: 'bg-employee-muted'
-    },
-    'team-lead': {
-      title: 'Team Lead Login',
-      description: 'Review and approve team appraisals',
-      icon: Shield,
-      variant: 'team-lead' as const,
-      bgClass: 'bg-team-lead-muted'
-    },
-    hr: {
-      title: 'HR Login',
-      description: 'Access comprehensive analytics dashboard',
-      icon: Crown,
-      variant: 'hr' as const,
-      bgClass: 'bg-hr-muted'
     }
   };
 
@@ -114,108 +161,132 @@ const Login = () => {
       </div>
 
       <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          {/* Role Selection */}
-          {!formData.role && (
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-semibold mb-4">Select Your Role</h2>
-              <div className="grid md:grid-cols-3 gap-6">
-                {Object.entries(roleConfig).map(([role, config]) => {
-                  const IconComponent = config.icon;
-                  return (
-                    <Card 
-                      key={role}
-                      className="cursor-pointer hover:shadow-role transition-shadow duration-200 border-2 hover:border-primary/50"
-                      onClick={() => handleRoleSelect(role as any)}
-                    >
-                      <CardHeader className="text-center pb-4">
-                        <div className={`w-16 h-16 mx-auto rounded-full ${config.bgClass} flex items-center justify-center mb-4`}>
-                          <IconComponent className="w-8 h-8 text-foreground" />
-                        </div>
-                        <CardTitle className="text-xl">{config.title}</CardTitle>
-                        <CardDescription>{config.description}</CardDescription>
-                      </CardHeader>
-                    </Card>
-                  );
-                })}
+        <div className="max-w-md mx-auto">
+          <Card className="shadow-medium">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                {isLogin ? (
+                  <LogIn className="w-8 h-8 text-primary" />
+                ) : (
+                  <UserPlus className="w-8 h-8 text-primary" />
+                )}
               </div>
-            </div>
-          )}
-
-          {/* Login Form */}
-          {formData.role && (
-            <div className="max-w-md mx-auto">
-              <Card className="shadow-medium">
-                <CardHeader className="text-center">
-                  <div className={`w-16 h-16 mx-auto rounded-full ${roleConfig[formData.role].bgClass} flex items-center justify-center mb-4`}>
-                    {(() => {
-                      const IconComponent = roleConfig[formData.role].icon;
-                      return <IconComponent className="w-8 h-8 text-foreground" />;
-                    })()}
-                  </div>
-                  <CardTitle className="text-2xl">{roleConfig[formData.role].title}</CardTitle>
-                  <CardDescription>{roleConfig[formData.role].description}</CardDescription>
-                </CardHeader>
-                
-                <CardContent>
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                      />
+              <CardTitle className="text-2xl">
+                {isLogin ? 'Sign In' : 'Create Account'}
+              </CardTitle>
+              <CardDescription>
+                {isLogin ? 'Access your appraisal dashboard' : 'Join the appraisal system'}
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input
+                          id="firstName"
+                          name="firstName"
+                          placeholder="John"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input
+                          id="lastName"
+                          name="lastName"
+                          placeholder="Doe"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        placeholder="Enter your password"
-                        value={formData.password}
+                      <Label htmlFor="role">Role</Label>
+                      <select
+                        id="role"
+                        name="role"
+                        value={formData.role}
                         onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
                         required
-                      />
+                      >
+                        <option value="employee">Employee</option>
+                        <option value="team-lead">Team Lead</option>
+                        <option value="hr">HR</option>
+                      </select>
                     </div>
 
-                    <Separator className="my-6" />
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Input
+                        id="department"
+                        name="department"
+                        placeholder="Engineering, Marketing, etc."
+                        value={formData.department}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </>
+                )}
 
-                    <Button 
-                      type="submit" 
-                      variant={roleConfig[formData.role].variant}
-                      className="w-full h-12 text-base font-semibold"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? 'Signing In...' : `Sign In as ${roleConfig[formData.role].title.replace(' Login', '')}`}
-                    </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => setFormData({ email: '', password: '', role: null })}
-                    >
-                      Choose Different Role
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
 
-              {/* Supabase Integration Notice */}
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> To enable authentication and backend functionality, connect this project to Supabase using the integration button in the top right.
-                </p>
-              </div>
-            </div>
-          )}
+                <Separator className="my-6" />
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 text-base font-semibold"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 
+                    (isLogin ? 'Signing In...' : 'Creating Account...') : 
+                    (isLogin ? 'Sign In' : 'Create Account')
+                  }
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setIsLogin(!isLogin)}
+                >
+                  {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
