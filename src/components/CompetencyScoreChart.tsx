@@ -66,14 +66,14 @@ const CompetencyScoreChart = ({ data }: CompetencyScoreChartProps) => {
   ];
 
   const competencyColors = {
-    'Technical Skills': 'hsl(var(--chart-1))',
-    'Functional Understanding': 'hsl(var(--chart-2))', 
-    'Communication': 'hsl(var(--chart-3))',
-    'Energy & Drive': 'hsl(var(--chart-4))',
-    'AI Adoption': 'hsl(var(--chart-5))',
-    'Responsibilities & Trust': '#8884d8',
-    'Teamwork': '#82ca9d',
-    'Managing Processes': '#ffc658'
+    'Technical Skills': '#3B82F6',      // Blue
+    'Functional Understanding': '#10B981', // Emerald  
+    'Communication': '#8B5CF6',         // Violet
+    'Energy & Drive': '#F59E0B',        // Amber
+    'AI Adoption': '#EF4444',           // Red
+    'Responsibilities & Trust': '#06B6D4', // Cyan
+    'Teamwork': '#84CC16',              // Lime
+    'Managing Processes': '#F97316'     // Orange
   };
 
   const chartData = data || mockData;
