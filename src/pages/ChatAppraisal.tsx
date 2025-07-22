@@ -137,7 +137,7 @@ const ChatAppraisal = () => {
         }
       }
 
-      // Initialize welcome message
+      // Initialize welcome message and restore conversation history
       const welcomeMessage: Message = {
         id: '1',
         type: 'ai',
@@ -145,15 +145,74 @@ const ChatAppraisal = () => {
         timestamp: new Date()
       };
 
-      const firstQuestion: Message = {
-        id: '2',
-        type: 'ai',
-        content: competencyQuestions.technical,
-        timestamp: new Date(),
-        competency: 'technical'
-      };
+      const restoredMessages: Message[] = [welcomeMessage];
 
-      setMessages([welcomeMessage, firstQuestion]);
+      // Restore conversation history based on saved responses
+      if (appraisal.raw_employee_text && typeof appraisal.raw_employee_text === 'object') {
+        const existingResponses = appraisal.raw_employee_text as Partial<CompetencyData>;
+        let messageId = 2;
+        
+        // Add all previous questions and answers
+        competencyOrder.forEach((competency, index) => {
+          // Add the AI question
+          restoredMessages.push({
+            id: messageId.toString(),
+            type: 'ai',
+            content: competencyQuestions[competency],
+            timestamp: new Date(),
+            competency: competency
+          });
+          messageId++;
+
+          // Add user response if it exists
+          if (existingResponses[competency]) {
+            restoredMessages.push({
+              id: messageId.toString(),
+              type: 'user',
+              content: existingResponses[competency],
+              timestamp: new Date(),
+              competency: competency
+            });
+            messageId++;
+          }
+        });
+
+        // Find where we left off
+        let lastCompetencyIndex = 0;
+        competencyOrder.forEach((comp, index) => {
+          if (existingResponses[comp]) {
+            lastCompetencyIndex = index + 1;
+          }
+        });
+        
+        if (lastCompetencyIndex >= competencyOrder.length) {
+          // All competencies complete - add completion message
+          const completionMessage: Message = {
+            id: messageId.toString(),
+            type: 'ai',
+            content: "Excellent! You've completed all competency areas. Please review your responses and click 'Submit Appraisal' when you're ready to finalize your self-appraisal.",
+            timestamp: new Date()
+          };
+          restoredMessages.push(completionMessage);
+          setIsComplete(true);
+          setCompetencyIndex(competencyOrder.length);
+        } else {
+          setCompetencyIndex(lastCompetencyIndex);
+          setCurrentCompetency(competencyOrder[lastCompetencyIndex]);
+        }
+      } else {
+        // Fresh start - add first question
+        const firstQuestion: Message = {
+          id: '2',
+          type: 'ai',
+          content: competencyQuestions.technical,
+          timestamp: new Date(),
+          competency: 'technical'
+        };
+        restoredMessages.push(firstQuestion);
+      }
+
+      setMessages(restoredMessages);
 
     } catch (error) {
       console.error('Error initializing appraisal:', error);
@@ -293,6 +352,19 @@ const ChatAppraisal = () => {
 
   const handleCancelAppraisal = async () => {
     if (!appraisalId) {
+      // Reset all state to initial values
+      setMessages([]);
+      setCurrentInput('');
+      setCurrentCompetency('technical');
+      setCompetencyIndex(0);
+      setIsComplete(false);
+      setResponses({
+        technical: '',
+        functional: '',
+        communication: '',
+        energy_drive: ''
+      });
+      setAppraisalId('');
       navigate('/employee');
       return;
     }
@@ -314,6 +386,20 @@ const ChatAppraisal = () => {
         });
         return;
       }
+
+      // Reset all state to initial values
+      setMessages([]);
+      setCurrentInput('');
+      setCurrentCompetency('technical');
+      setCompetencyIndex(0);
+      setIsComplete(false);
+      setResponses({
+        technical: '',
+        functional: '',
+        communication: '',
+        energy_drive: ''
+      });
+      setAppraisalId('');
 
       toast({
         title: "Cancelled",
