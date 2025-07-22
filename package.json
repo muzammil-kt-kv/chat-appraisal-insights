@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "create-employees": "node scripts/create-employees.js",
+    "create-employees:advanced": "node scripts/create-employees-advanced.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
