@@ -411,9 +411,11 @@ class OpenAIClient {
     userMessage: string,
     model: string = "gpt-4o-mini"
   ): Promise<string | null> {
-    const messages =
-      conversationHistory +
-      [{ role: "assistant" as const, content: questionPrompt + userMessage }];
+    const messages = [
+      { role: "system" as const, content: questionPrompt },
+      ...conversationHistory,
+      { role: "user" as const, content: userMessage }
+    ];
     return this.chatCompletion(messages, model);
   }
 
@@ -422,7 +424,7 @@ class OpenAIClient {
     model: string = "gpt-4o-mini"
   ): Promise<string | null> {
     const messages = [
-      { role: "assistant" as const, content: userMessage + ANSWER_EVAL_PROMPT },
+      { role: "user" as const, content: ANSWER_EVAL_PROMPT + "\n\n" + userMessage },
     ];
     return this.chatCompletion(messages, model);
   }
@@ -485,10 +487,19 @@ Keep the analysis professional and constructive.`;
   }
 }
 
-// Create a singleton instance
-const openaiClient = new OpenAIClient(
-  "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"
-);
+// Create a singleton instance with API key validation
+const getOpenAIApiKey = (): string => {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  
+  if (!apiKey || apiKey === "sk-test") {
+    console.warn("⚠️ OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY in your environment variables.");
+    return "sk-test"; // Fallback for development
+  }
+  
+  return apiKey;
+};
+
+const openaiClient = new OpenAIClient(getOpenAIApiKey());
 
 export { openaiClient, OpenAIClient, COMPETENCY_MATRIX };
 export type { OpenAI };
