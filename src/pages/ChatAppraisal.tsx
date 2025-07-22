@@ -295,40 +295,40 @@ const ChatAppraisal = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="border-b bg-card p-4">
+      <div className="border-b bg-card p-2 sm:p-4">
         <div className="container mx-auto max-w-4xl">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold">Self-Appraisal Chat</h1>
-              <p className="text-muted-foreground">Complete your performance evaluation</p>
+              <h1 className="text-xl sm:text-2xl font-bold">Self-Appraisal Chat</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">Complete your performance evaluation</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">
+            <div className="text-left sm:text-right">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Competencies Covered: {competencyIndex}/{competencyOrder.length}
               </p>
-              <Progress value={progress} className="w-32 mt-1" />
+              <Progress value={progress} className="w-full sm:w-32 mt-1" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 container mx-auto max-w-4xl p-4 overflow-hidden">
-        <div className="h-full overflow-y-auto space-y-4 pb-4">
+      <div className="flex-1 container mx-auto max-w-4xl p-2 sm:p-4 overflow-hidden">
+        <div className="h-full overflow-y-auto space-y-3 sm:space-y-4 pb-4">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in px-2 sm:px-0`}
             >
-              <div className={`flex items-start space-x-2 max-w-[80%] ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+              <div className={`flex items-start space-x-2 max-w-[90%] sm:max-w-[80%] ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                <div className={`flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
                   message.type === 'ai' ? 'bg-primary' : 'bg-blue-600'
                 }`}>
-                  {message.type === 'ai' ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-white" />}
+                  {message.type === 'ai' ? <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-white" /> : <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
                 </div>
                 <Card className={`${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-card'}`}>
-                  <CardContent className="p-3">
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <CardContent className="p-2 sm:p-3">
+                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{message.content}</p>
                     <p className={`text-xs mt-1 ${message.type === 'user' ? 'text-blue-100' : 'text-muted-foreground'}`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -340,11 +340,11 @@ const ChatAppraisal = () => {
           
           {/* Competency Progress Indicators */}
           {competencyIndex > 0 && (
-            <div className="flex justify-center space-x-4 py-4">
+            <div className="flex flex-wrap justify-center gap-2 py-4 px-2">
               {competencyOrder.map((comp, index) => (
                 <div
                   key={comp}
-                  className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs ${
+                  className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1 rounded-full text-xs ${
                     index < competencyIndex
                       ? 'bg-green-100 text-green-800 border border-green-200'
                       : index === competencyIndex
@@ -353,7 +353,7 @@ const ChatAppraisal = () => {
                   }`}
                 >
                   {index < competencyIndex && <CheckCircle className="w-3 h-3" />}
-                  <span>{competencyLabels[comp]}</span>
+                  <span className="text-xs sm:text-sm">{competencyLabels[comp]}</span>
                 </div>
               ))}
             </div>
@@ -364,39 +364,40 @@ const ChatAppraisal = () => {
       </div>
 
       {/* Input Area */}
-      <div className="border-t bg-card p-4">
+      <div className="border-t bg-card p-2 sm:p-4">
         <div className="container mx-auto max-w-4xl">
           {isComplete ? (
             <div className="text-center space-y-4">
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground px-2">
                 Your self-appraisal is complete! Review your responses above and submit when ready.
               </p>
               <Button
                 onClick={handleSubmitAppraisal}
                 disabled={isSubmitting}
                 size="lg"
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Appraisal'}
               </Button>
             </div>
           ) : (
-            <div className="flex space-x-4">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
               <Textarea
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your response..."
-                className="flex-1 min-h-[60px] resize-none"
+                className="flex-1 min-h-[60px] resize-none text-sm"
                 rows={2}
               />
               <Button
                 onClick={handleSendMessage}
                 disabled={!currentInput.trim()}
                 size="lg"
-                className="px-6"
+                className="px-6 w-full sm:w-auto"
               >
                 <Send className="w-4 h-4" />
+                <span className="ml-2 sm:hidden">Send</span>
               </Button>
             </div>
           )}
