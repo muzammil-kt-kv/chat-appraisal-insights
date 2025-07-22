@@ -54,7 +54,7 @@ const TeamLeadReview = () => {
 
   const fetchAppraisalData = async () => {
     try {
-      // Fetch the employee's appraisal
+      // Fetch the employee's appraisal - look for submitted or team_lead_review status
       const { data: appraisalData, error: appraisalError } = await supabase
         .from('appraisal_submissions')
         .select(`
@@ -62,8 +62,8 @@ const TeamLeadReview = () => {
           employee:user_profiles!employee_id(*)
         `)
         .eq('employee_id', employeeId)
-        .eq('status', 'submitted')
-        .single();
+        .in('status', ['submitted', 'team_lead_review'])
+        .maybeSingle();
 
       if (appraisalError) {
         console.error('Error fetching appraisal:', appraisalError);
