@@ -14,8 +14,15 @@ export interface AppraisalData {
     | "completed";
   raw_employee_text: Json | null;
   ai_analysis: Json | null;
+  conversation_history?: Json | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp?: string;
 }
 
 export class AppraisalService {
@@ -28,6 +35,7 @@ export class AppraisalService {
           status: "draft", // Reset to draft so they can be deleted
           raw_employee_text: null,
           ai_analysis: null,
+          conversation_history: null,
         })
         .eq("employee_id", employeeId)
         .in("status", ["draft", "submitted"]);
@@ -123,6 +131,31 @@ export class AppraisalService {
     }
   }
 
+  static async saveConversationHistory(
+    appraisalId: string,
+    conversationHistory: ConversationMessage[]
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from("appraisal_submissions")
+        .update({
+          conversation_history: conversationHistory,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", appraisalId);
+
+      if (error) {
+        console.error("Error saving conversation history:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error in saveConversationHistory:", error);
+      return false;
+    }
+  }
+
   static async submitAppraisal(appraisalId: string): Promise<boolean> {
     try {
       const { error } = await supabase
@@ -158,6 +191,26 @@ export class AppraisalService {
     }
   }
 
+  static async generateAIAnalysisFromConversation(
+    conversationHistory: ConversationMessage[]
+  ): Promise<string | null> {
+    try {
+      // Extract user responses from conversation history
+      const userResponses = conversationHistory
+        .filter((msg) => msg.role === "user")
+        .map((msg) => msg.content)
+        .join("\n\n");
+
+      const analysis = await openaiClient.analyzeResponses({
+        conversation: userResponses,
+      });
+      return analysis;
+    } catch (error) {
+      console.error("Error generating AI analysis from conversation:", error);
+      return null;
+    }
+  }
+
   static async updateAIAnalysis(
     appraisalId: string,
     analysis: string
@@ -181,6 +234,28 @@ export class AppraisalService {
     } catch (error) {
       console.error("Error in updateAIAnalysis:", error);
       return false;
+    }
+  }
+
+  static async getAppraisalWithConversation(
+    appraisalId: string
+  ): Promise<AppraisalData | null> {
+    try {
+      const { data, error } = await supabase
+        .from("appraisal_submissions")
+        .select("*")
+        .eq("id", appraisalId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching appraisal with conversation:", error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error in getAppraisalWithConversation:", error);
+      return null;
     }
   }
 }
