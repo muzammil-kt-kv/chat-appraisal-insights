@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Users, TrendingUp, BarChart3, FileText, Settings } from 'lucide-react';
+import CompetencyScoreChart from '@/components/CompetencyScoreChart';
 
 const HRDashboard = () => {
   return (
@@ -114,6 +115,10 @@ const HRDashboard = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        <div className="mb-8">
+          <CompetencyScoreChart />
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
